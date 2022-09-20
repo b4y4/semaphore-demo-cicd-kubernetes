@@ -12,6 +12,7 @@ blocks:
           commands:
             - checkout
             - date
+            - echo $SEMAPHORE_REGISTRY_USERNAME
             - docker login \
             - '  -u $SEMAPHORE_REGISTRY_USERNAME \'
             - '  -p $SEMAPHORE_REGISTRY_PASSWORD \'
