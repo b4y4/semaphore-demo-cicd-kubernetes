@@ -11,6 +11,7 @@ blocks:
         - name: docker build
           commands:
             - checkout
+            - date
             - docker login \
             - '  -u $SEMAPHORE_REGISTRY_USERNAME \'
             - '  -p $SEMAPHORE_REGISTRY_PASSWORD \'
