@@ -11,4 +11,62 @@ blocks:
         - name: docker build
           commands:
             - checkout
-            - docker build -t your-image .
+            - docker login \
+            - '  -u $SEMAPHORE_REGISTRY_USERNAME \'
+            - '  -p $SEMAPHORE_REGISTRY_PASSWORD \'
+            - '  $SEMAPHORE_REGISTRY_URL'
+            - docker pull \
+            - '  $SEMAPHORE_REGISTRY_URL/demo:latest || true'
+            - docker build \
+            - '  --cache-from $SEMAPHORE_REGISTRY_URL/demo:latest \'
+            - '  -t $SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID .'
+            - docker push \
+            - '  $SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID'
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu1804
+  - name: Test
+    task:
+      jobs:
+        - name: Unit test
+          commands:
+            - docker login \
+            - '  -u $SEMAPHORE_REGISTRY_USERNAME \'
+            - '  -p $SEMAPHORE_REGISTRY_PASSWORD \'
+            - '  $SEMAPHORE_REGISTRY_URL'
+            - docker pull \
+            - '  $SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID'
+            - docker run -it \
+            - '$SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID \'
+            - npm run lint
+        - name: Functional test
+          commands:
+            - sem-service start postgres
+            - docker run --net=host -it \
+            - '$SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID \'
+            - npm run ping
+            - docker run --net=host -it \
+            - '$SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID \'
+            - npm run migrate
+        - name: Integration test
+          commands:
+            - sem-service start postgres
+            - docker run --net=host -it \
+            - '$SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID \'
+            - npm run test
+  - name: Push
+    task:
+      jobs:
+        - name: Push
+          commands:
+            - docker login \
+            - '-u $SEMAPHORE_REGISTRY_USERNAME \'
+            - '-p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL'
+            - docker pull \
+            - '$SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID'
+            - docker tag \
+            - '$SEMAPHORE_REGISTRY_URL/demo:$SEMAPHORE_WORKFLOW_ID \'
+            - '$SEMAPHORE_REGISTRY_URL/demo:latest'
+            - docker push \
+            - '$SEMAPHORE_REGISTRY_URL/demo:latest'
